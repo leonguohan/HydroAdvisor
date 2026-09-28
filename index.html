@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>💧 HydroAdvisor — Personalized Hydration Planner</title>
+  <style>
+    /* ── Reset & Base ───────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; }
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      background: #0d1b2a;
+      color: #e0eaf8;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .app { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .header { text-align: center; margin-bottom: 36px; }
+    .header-badge {
+      display: inline-block; background: #1a3a5c; border: 1px solid #2d6a9f;
+      color: #60b4ff; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em;
+      padding: 4px 14px; border-radius: 20px; margin-bottom: 14px;
+      text-transform: uppercase;
+    }
+    .header h1 {
+      font-size: 2rem; font-weight: 700; color: #fff;
+      letter-spacing: -0.5px; margin-bottom: 8px;
+    }
+    .header h1 span { color: #38bdf8; }
+    .header p { color: #7fa8c9; font-size: 0.93rem; }
+
+    /* ── Step Tracker ────────────────────────────────────── */
+    .steps-bar { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 32px; }
+    .step-item { display: flex; flex-direction: column; align-items: center; position: relative; }
+    .step-circle {
+      width: 36px; height: 36px; border-radius: 50%; border: 2px solid #2d6a9f;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; color: #7fa8c9;
+      background: #0d1b2a; transition: all .3s; z-index: 1; position: relative;
+    }
+    .step-circle.active { border-color: #38bdf8; color: #38bdf8; background: #0d2a40; }
+    .step-circle.done { border-color: #22c55e; color: #fff; background: #166534; }
+    .step-label { font-size: 0.7rem; color: #4a7a9f; margin-top: 5px; white-space: nowrap; }
+    .step-line { width: 60px; height: 2px; background: #1e3a52; margin-bottom: 20px; transition: background .3s; }
+    .step-line.done-line { background: #22c55e; }
+
+    /* ── Card ────────────────────────────────────────────── */
+    .card {
+      background: #112233; border: 1px solid #1e3a52; border-radius: 14px;
+      padding: 28px; margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-title .icon {
+      width: 32px; height: 32px; border-radius: 8px; background: #0a2a42;
+      border: 1px solid #1e3a52; display: flex; align-items: center;
+      justify-content: center; font-size: 1rem;
+    }
+
+    /* ── Form ────────────────────────────────────────────── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 0.8rem; font-weight: 600; color: #7fa8c9; text-transform: uppercase; letter-spacing: 0.06em; }
+    input[type="number"], input[type="text"], select, input[type="range"] {
+      background: #0d1b2a; border: 1px solid #1e3a52; border-radius: 8px;
+      color: #e0eaf8; font-size: 0.93rem; padding: 10px 12px;
+      width: 100%; outline: none; transition: border-color .2s;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus { border-color: #38bdf8; }
+    select option { background: #0d1b2a; }
+    input[type="range"] {
+      padding: 0; height: 6px; border-radius: 4px; cursor: pointer;
+      accent-color: #38bdf8;
+    }
+    .range-row { display: flex; align-items: center; gap: 12px; }
+    .range-val {
+      min-width: 44px; text-align: center; font-weight: 700; color: #38bdf8;
+      font-size: 0.9rem; background: #0a2a42; border-radius: 6px; padding: 3px 7px;
+    }
+    .hint { font-size: 0.78rem; color: #4a7a9f; margin-top: 2px; }
+
+    /* Toggle chips */
+    .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid #1e3a52;
+      background: #0d1b2a; color: #7fa8c9; font-size: 0.82rem; cursor: pointer;
+      transition: all .2s; user-select: none;
+    }
+    .chip.selected { border-color: #38bdf8; background: #0a2a42; color: #38bdf8; font-weight: 600; }
+    .chip:hover { border-color: #2d6a9f; }
+
+    /* ── Nav Buttons ─────────────────────────────────────── */
+    .nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+    .btn {
+      padding: 11px 28px; border-radius: 9px; border: none; font-size: 0.9rem;
+      font-weight: 700; cursor: pointer; transition: all .2s;
+    }
+    .btn-primary { background: #0ea5e9; color: #fff; }
+    .btn-primary:hover { background: #38bdf8; }
+    .btn-ghost { background: transparent; border: 1px solid #1e3a52; color: #7fa8c9; }
+    .btn-ghost:hover { border-color: #2d6a9f; color: #e0eaf8; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-success:hover { background: #22c55e; color: #0d1b2a; }
+
+    /* ── Results ─────────────────────────────────────────── */
+    .results { display: none; }
+    .results.show { display: block; }
+
+    .summary-banner {
+      background: linear-gradient(135deg, #0a2a42, #0a1f35);
+      border: 1px solid #2d6a9f; border-radius: 14px; padding: 28px;
+      margin-bottom: 20px; text-align: center;
+    }
+    .summary-volume {
+      font-size: 3rem; font-weight: 800; color: #38bdf8;
+      letter-spacing: -1px; line-height: 1;
+    }
+    .summary-unit { font-size: 1rem; color: #7fa8c9; margin-top: 4px; }
+    .summary-tagline { font-size: 0.93rem; color: #a0c4e0; margin-top: 10px; }
+
+    .metrics-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 560px) { .metrics-row { grid-template-columns: 1fr 1fr; } }
+    .metric-card {
+      background: #0d1b2a; border: 1px solid #1e3a52; border-radius: 10px;
+      padding: 14px; text-align: center;
+    }
+    .metric-val { font-size: 1.4rem; font-weight: 800; color: #38bdf8; }
+    .metric-val.green { color: #4ade80; }
+    .metric-val.amber { color: #fbbf24; }
+    .metric-label { font-size: 0.72rem; color: #4a7a9f; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+    /* Schedule timeline */
+    .timeline { list-style: none; padding: 0; }
+    .tl-item { display: flex; gap: 16px; padding-bottom: 22px; position: relative; }
+    .tl-item:last-child { padding-bottom: 0; }
+    .tl-item:not(:last-child) .tl-line::after {
+      content: ''; position: absolute; left: 17px; top: 36px;
+      width: 2px; height: calc(100% - 12px); background: #1e3a52;
+    }
+    .tl-dot {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; position: relative;
+    }
+    .tl-content { flex: 1; }
+    .tl-time { font-size: 0.72rem; color: #4a7a9f; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .tl-title { font-size: 0.95rem; font-weight: 700; color: #e0eaf8; margin: 2px 0 4px; }
+    .tl-desc { font-size: 0.85rem; color: #7fa8c9; }
+    .tl-amount {
+      display: inline-block; background: #0a2a42; border: 1px solid #1e3a52;
+      color: #38bdf8; font-weight: 700; font-size: 0.82rem;
+      padding: 3px 10px; border-radius: 20px; margin-top: 6px;
+    }
+    .tl-pill {
+      display: inline-block; background: #1a3a1a; border: 1px solid #166534;
+      color: #4ade80; font-size: 0.75rem; padding: 2px 9px;
+      border-radius: 20px; margin-left: 6px; vertical-align: middle;
+    }
+
+    /* Progress bar */
+    .progress-wrap { margin: 8px 0 4px; }
+    .progress-bg { background: #1e3a52; border-radius: 4px; height: 8px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #0ea5e9, #38bdf8); transition: width 1.2s ease; }
+
+    /* Tips */
+    .tip-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+    .tip-item { display: flex; gap: 12px; align-items: flex-start; }
+    .tip-icon { font-size: 1.2rem; margin-top: 1px; }
+    .tip-text { font-size: 0.88rem; color: #a0c4e0; }
+    .tip-text strong { color: #e0eaf8; }
+
+    /* Disclaimer */
+    .disclaimer {
+      background: #1a1a0d; border: 1px solid #3a3a10; border-radius: 10px;
+      padding: 14px 16px; font-size: 0.8rem; color: #8a8a50; margin-top: 20px;
+    }
+    .disclaimer strong { color: #c4c450; }
+
+    /* Electrolyte badge */
+    .electrolyte-badge {
+      display: flex; align-items: center; gap: 8px; background: #1a0a2a;
+      border: 1px solid #4a1a6a; border-radius: 8px; padding: 10px 14px;
+      margin-top: 12px; font-size: 0.83rem; color: #c084fc;
+    }
+
+    /* Hidden steps */
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+
+    /* Validation */
+    .err { border-color: #ef4444 !important; }
+    .err-msg { font-size: 0.75rem; color: #ef4444; margin-top: 3px; }
+
+    /* ── Water Drop Animation (header) ──────────────────── */
+    .drop-anim {
+      display: flex; justify-content: center; gap: 6px; margin-bottom: 10px;
+    }
+    .drop { font-size: 1.6rem; animation: bob 1.6s ease-in-out infinite; }
+    .drop:nth-child(2) { animation-delay: 0.2s; }
+    .drop:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+    /* ── Radar / score ring ──────────────────────────────── */
+    .score-ring { display: flex; flex-direction: column; align-items: center; padding: 8px 0; }
+    .ring-svg { overflow: visible; }
+    .ring-track { fill: none; stroke: #1e3a52; stroke-width: 8; }
+    .ring-fill { fill: none; stroke: #38bdf8; stroke-width: 8; stroke-linecap: round;
+      transition: stroke-dashoffset 1.5s ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
+    .ring-label { font-size: 1.5rem; font-weight: 800; fill: #38bdf8; text-anchor: middle; dominant-baseline: central; }
+    .ring-sub { font-size: 0.65rem; fill: #4a7a9f; text-anchor: middle; }
+
+    /* Reset button */
+    .reset-btn {
+      background: transparent; border: 1px solid #1e3a52; border-radius: 8px;
+      color: #4a7a9f; font-size: 0.78rem; padding: 6px 14px; cursor: pointer;
+      transition: all .2s; margin-top: 4px;
+    }
+    .reset-btn:hover { border-color: #ef4444; color: #ef4444; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── HEADER ──────────────────────────────────────────── -->
+  <div class="header">
+    <div class="drop-anim">
+      <span class="drop">💧</span><span class="drop">💧</span><span class="drop">💧</span>
+    </div>
+    <div class="header-badge">AI Hydration Advisor</div>
+    <h1>Hydro<span>Advisor</span></h1>
+    <p>Science-backed daily hydration plans tailored to your body, activity & lifestyle</p>
+  </div>
+
+  <!-- ── STEP TRACKER ────────────────────────────────────── -->
+  <div class="steps-bar" id="stepsBar">
+    <div class="step-item">
+      <div class="step-circle active" id="sc1">1</div>
+      <div class="step-label">Biometrics</div>
+    </div>
+    <div class="step-line" id="sl1"></div>
+    <div class="step-item">
+      <div class="step-circle" id="sc2">2</div>
+      <div class="step-label">Activity</div>
+    </div>
+    <div class="step-line" id="sl2"></div>
+    <div class="step-item">
+      <div class="step-circle" id="sc3">3</div>
+      <div class="step-label">Schedule</div>
+    </div>
+    <div class="step-line" id="sl3"></div>
+    <div class="step-item">
+      <div class="step-circle" id="sc4">4</div>
+      <div class="step-label">Lifestyle</div>
+    </div>
+    <div class="step-line" id="sl4"></div>
+    <div class="step-item">
+      <div class="step-circle" id="sc5">5</div>
+      <div class="step-label">Results</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!--   STEP 1 — BIOMETRICS                                  -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <div class="step-panel active" id="panel1">
+    <div class="card">
+      <div class="card-title"><div class="icon">🧬</div> Biometric Profile</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Weight</label>
+          <div class="range-row">
+            <input type="range" id="weight" min="40" max="180" value="75" oninput="sync('weight','weightVal')">
+            <span class="range-val" id="weightVal">75</span>
+          </div>
+          <div class="hint">kg</div>
+        </div>
+        <div class="form-group">
+          <label>Height</label>
+          <div class="range-row">
+            <input type="range" id="height" min="140" max="220" value="170" oninput="sync('height','heightVal')">
+            <span class="range-val" id="heightVal">170</span>
+          </div>
+          <div class="hint">cm</div>
+        </div>
+        <div class="form-group">
+          <label>Age</label>
+          <div class="range-row">
+            <input type="range" id="age" min="16" max="85" value="30" oninput="sync('age','ageVal')">
+            <span class="range-val" id="ageVal">30</span>
+          </div>
+          <div class="hint">years</div>
+        </div>
+        <div class="form-group">
+          <label>Biological Sex <span style="color:#4a7a9f;font-size:0.75em;text-transform:none">(optional)</span></label>
+          <select id="sex">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Prefer not to say</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Special Health Status</label>
+          <div class="chip-group" id="healthChips">
+            <div class="chip" data-val="pregnant">🤰 Pregnant</div>
+            <div class="chip" data-val="nursing">🤱 Nursing</div>
+            <div class="chip" data-val="fluid_restrict">⚠️ Fluid Restriction</div>
+            <div class="chip" data-val="none" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <div></div>
+      <button class="btn btn-primary" onclick="goTo(2)">Next: Activity →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!--   STEP 2 — ACTIVITY                                    -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <div class="step-panel" id="panel2">
+    <div class="card">
+      <div class="card-title"><div class="icon">🏃</div> Activity & Movement</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Workout Types (select all that apply)</label>
+          <div class="chip-group" id="workoutChips">
+            <div class="chip" data-val="running">🏃 Running</div>
+            <div class="chip" data-val="cycling">🚴 Cycling</div>
+            <div class="chip" data-val="lifting">🏋️ Weightlifting</div>
+            <div class="chip" data-val="yoga">🧘 Yoga/Pilates</div>
+            <div class="chip" data-val="hiit">⚡ HIIT</div>
+            <div class="chip" data-val="swimming">🏊 Swimming</div>
+            <div class="chip" data-val="sports">🏅 Team Sports</div>
+            <div class="chip" data-val="walking">🚶 Walking Only</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Workout Duration</label>
+          <div class="range-row">
+            <input type="range" id="workoutDur" min="0" max="180" step="15" value="45" oninput="sync('workoutDur','workoutDurVal')">
+            <span class="range-val" id="workoutDurVal">45</span>
+          </div>
+          <div class="hint">minutes per session</div>
+        </div>
+        <div class="form-group">
+          <label>Workout Days / Week</label>
+          <div class="range-row">
+            <input type="range" id="workoutDays" min="0" max="7" value="4" oninput="sync('workoutDays','workoutDaysVal')">
+            <span class="range-val" id="workoutDaysVal">4</span>
+          </div>
+          <div class="hint">days per week</div>
+        </div>
+        <div class="form-group full">
+          <label>Intensity Level</label>
+          <div class="chip-group" id="intensityChips">
+            <div class="chip" data-val="light">🟢 Light</div>
+            <div class="chip selected" data-val="moderate">🟡 Moderate</div>
+            <div class="chip" data-val="hard">🟠 Hard</div>
+            <div class="chip" data-val="elite">🔴 Elite</div>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Climate / Environment</label>
+          <div class="chip-group" id="climateChips">
+            <div class="chip" data-val="tropical">🌴 Hot & Humid</div>
+            <div class="chip" data-val="dry">🏜️ Hot & Dry</div>
+            <div class="chip selected" data-val="temperate">🌤️ Temperate</div>
+            <div class="chip" data-val="cold">❄️ Cold</div>
+            <div class="chip" data-val="ac">🏢 Indoor AC All Day</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(3)">Next: Schedule →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!--   STEP 3 — SCHEDULE                                    -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <div class="step-panel" id="panel3">
+    <div class="card">
+      <div class="card-title"><div class="icon">🕐</div> Daily Schedule</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Wake Time</label>
+          <select id="wakeTime">
+            <option value="5">5:00 AM</option>
+            <option value="6">6:00 AM</option>
+            <option value="7" selected>7:00 AM</option>
+            <option value="8">8:00 AM</option>
+            <option value="9">9:00 AM</option>
+            <option value="10">10:00 AM</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Bedtime</label>
+          <select id="bedTime">
+            <option value="20">8:00 PM</option>
+            <option value="21">9:00 PM</option>
+            <option value="22">10:00 PM</option>
+            <option value="23" selected>11:00 PM</option>
+            <option value="24">12:00 AM</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Deep Focus / Work Blocks</label>
+          <div class="chip-group" id="focusChips">
+            <div class="chip selected" data-val="early_morning">🌅 Early Morning (6–9 AM)</div>
+            <div class="chip selected" data-val="mid_morning">☀️ Mid-Morning (9 AM–12 PM)</div>
+            <div class="chip" data-val="afternoon">🌤️ Afternoon (1–5 PM)</div>
+            <div class="chip" data-val="evening">🌙 Evening (6–10 PM)</div>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Do you experience an afternoon energy slump?</label>
+          <div class="chip-group" id="slumpChips">
+            <div class="chip selected" data-val="yes_2">😴 Yes, around 2–3 PM</div>
+            <div class="chip" data-val="yes_4">😴 Yes, around 4–5 PM</div>
+            <div class="chip" data-val="no">✅ No slump</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(4)">Next: Lifestyle →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!--   STEP 4 — LIFESTYLE                                   -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <div class="step-panel" id="panel4">
+    <div class="card">
+      <div class="card-title"><div class="icon">☕</div> Diet & Lifestyle</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Coffee / Caffeinated Drinks</label>
+          <div class="range-row">
+            <input type="range" id="caffeine" min="0" max="8" value="2" oninput="sync('caffeine','caffeineVal')">
+            <span class="range-val" id="caffeineVal">2</span>
+          </div>
+          <div class="hint">cups per day</div>
+        </div>
+        <div class="form-group">
+          <label>Alcohol</label>
+          <div class="chip-group" id="alcoholChips">
+            <div class="chip selected" data-val="none">🚫 None</div>
+            <div class="chip" data-val="occasional">🍷 Occasional</div>
+            <div class="chip" data-val="daily">🍺 Daily</div>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Dietary Pattern</label>
+          <div class="chip-group" id="dietChips">
+            <div class="chip selected" data-val="balanced">🥗 Balanced</div>
+            <div class="chip" data-val="keto">🥩 Keto / Low-Carb</div>
+            <div class="chip" data-val="highprotein">💪 High-Protein</div>
+            <div class="chip" data-val="vegan">🌱 Vegan / Plant-Based</div>
+            <div class="chip" data-val="intermittent">⏱️ Intermittent Fasting</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="goTo(3)">← Back</button>
+      <button class="btn btn-success" onclick="buildPlan()">🚀 Generate My Hydration Plan</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <!--   STEP 5 — RESULTS                                     -->
+  <!-- ══════════════════════════════════════════════════════ -->
+  <div class="step-panel" id="panel5">
+    <div class="results show" id="resultsContainer"></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--   JAVASCRIPT ENGINE                                        -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<script>
+/* ── Utility ───────────────────────────────────── */
+function sync(inputId, displayId) {
+  document.getElementById(displayId).textContent = document.getElementById(inputId).value;
+}
+
+function getVal(id) { return +document.getElementById(id).value; }
+function getStrVal(id) { return document.getElementById(id).value; }
+function getSelected(groupId) {
+  return [...document.querySelectorAll(`#${groupId} .chip.selected`)].map(c => c.dataset.val);
+}
+function getSingle(groupId) { return getSelected(groupId)[0] || null; }
+
+/* ── Chip toggle ───────────────────────────────── */
+document.querySelectorAll('.chip-group').forEach(group => {
+  const isMulti = ['workoutChips','healthChips','focusChips'].includes(group.id);
+  group.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    if (isMulti) {
+      chip.classList.toggle('selected');
+    } else {
+      group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    }
+  });
+});
+
+/* ── Step navigation ───────────────────────────── */
+let currentStep = 1;
+function goTo(n) {
+  document.getElementById('panel' + currentStep).classList.remove('active');
+  document.getElementById('panel' + n).classList.add('active');
+  // update circles
+  for (let i = 1; i <= 5; i++) {
+    const sc = document.getElementById('sc' + i);
+    sc.classList.remove('active','done');
+    if (i < n) { sc.classList.add('done'); sc.textContent = '✓'; }
+    else if (i === n) { sc.classList.add('active'); sc.textContent = i; }
+    else { sc.textContent = i; }
+  }
+  for (let i = 1; i <= 4; i++) {
+    const sl = document.getElementById('sl' + i);
+    sl.classList.toggle('done-line', i < n);
+  }
+  currentStep = n;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ══════════════════════════════════════════════════
+   HYDRATION CALCULATION ENGINE
+══════════════════════════════════════════════════ */
+function buildPlan() {
+  const weight   = getVal('weight');
+  const age      = getVal('age');
+  const sex      = getStrVal('sex');
+  const workoutDur  = getVal('workoutDur');
+  const workoutDays = getVal('workoutDays');
+  const caffeine    = getVal('caffeine');
+  const wakeHour    = getVal('wakeTime');
+  const bedHour     = getVal('bedTime');
+
+  const intensity  = getSingle('intensityChips') || 'moderate';
+  const climate    = getSingle('climateChips')   || 'temperate';
+  const alcohol    = getSingle('alcoholChips')   || 'none';
+  const diet       = getSingle('dietChips')      || 'balanced';
+  const healthFlags = getSelected('healthChips');
+  const workoutTypes = getSelected('workoutChips');
+  const slump      = getSingle('slumpChips')     || 'yes_2';
+
+  /* 1 ── Baseline (ml): weight-based standard 33ml/kg, adjusted for sex & age */
+  let base = weight * 33;
+  if (sex === 'female') base *= 0.92;
+  if (age > 55) base *= 1.05;         // older adults need reminders
+  if (age < 25) base *= 1.03;
+
+  /* 2 ── Activity add-on per workout day */
+  const intensityMap = { light: 250, moderate: 400, hard: 600, elite: 800 };
+  const workoutAdd = (workoutDur / 60) * (intensityMap[intensity] || 400);
+
+  /* Climate factor */
+  const climateMap = { tropical: 1.25, dry: 1.20, temperate: 1.0, cold: 0.92, ac: 0.97 };
+  base *= (climateMap[climate] || 1.0);
+
+  /* 3 ── Adjustments */
+  let adjustments = 0;
+  if (caffeine >= 3) adjustments += caffeine * 35;   // diuretic offset
+  if (alcohol === 'daily') adjustments += 300;
+  if (alcohol === 'occasional') adjustments += 150;
+  if (diet === 'keto') adjustments += 400;           // keto sodium flush
+  if (diet === 'highprotein') adjustments += 200;
+  if (healthFlags.includes('pregnant')) adjustments += 300;
+  if (healthFlags.includes('nursing')) adjustments += 450;
+
+  /* 4 ── Total */
+  const totalMl = Math.round(base + workoutAdd + adjustments);
+  const totalL  = (totalMl / 1000).toFixed(1);
+  const totalOz = Math.round(totalMl / 29.574);
+
+  /* 5 ── Electrolyte flag */
+  const needsElectrolytes = workoutDur >= 60 || intensity === 'hard' || intensity === 'elite'
+    || climate === 'tropical' || climate === 'dry' || diet === 'keto';
+
+  /* 6 ── Focus/energy score (0–100) */
+  let score = 78;
+  if (totalMl > 2500) score += 8;
+  if (workoutDays >= 4) score += 6;
+  if (caffeine <= 2) score += 4;
+  if (diet === 'balanced' || diet === 'vegan') score += 4;
+  if (alcohol === 'none') score += 4;
+  if (climate === 'ac') score -= 4;
+  score = Math.min(score, 99);
+
+  /* 7 ── Phase breakdown */
+  const wakeAmt   = 480;  // 16 oz always on wake
+  const remainAfterWake = totalMl - wakeAmt;
+  const morningAmt  = Math.round(remainAfterWake * 0.30);
+  const middayAmt   = Math.round(remainAfterWake * 0.32 + workoutAdd);
+  const afternoonAmt = Math.round(remainAfterWake * 0.22);
+  const eveningAmt  = Math.round(remainAfterWake * 0.16);
+
+  const fmtMl = v => `${v} ml (${Math.round(v/29.574)} oz)`;
+  const fmtTime = h => h <= 12 ? `${h}:00 AM` : `${h-12}:00 PM`;
+
+  /* ── Assumptions string ───────────────────────── */
+  const assumptions = [];
+  if (workoutTypes.length === 0) assumptions.push('no specific workout type selected — assumed general fitness');
+  if (assumptions.length > 0) {/* show later */ }
+
+  /* ══════════════════════════════════════════
+     BUILD HTML OUTPUT
+  ══════════════════════════════════════════ */
+  const circumference = 2 * Math.PI * 44;
+  const fillOffset = circumference - (score / 100) * circumference;
+
+  let timelineItems = [];
+
+  // Morning activation
+  timelineItems.push({
+    dot: '🌅', color: '#fbbf24', dotBg: '#2a1f00',
+    time: `${fmtTime(wakeHour)} — ${fmtTime(wakeHour + 2)}`,
+    title: 'Morning Activation',
+    desc: `Start with <strong>room-temperature water</strong> immediately on waking. Rehydrate from overnight fluid loss (avg 400–600 ml lost during sleep).`,
+    amount: fmtMl(wakeAmt),
+    pill: 'with lemon + pinch of sea salt'
+  });
+
+  // Focus block 1
+  timelineItems.push({
+    dot: '🧠', color: '#38bdf8', dotBg: '#001f2a',
+    time: `${fmtTime(wakeHour + 2)} — ${fmtTime(wakeHour + 5)}`,
+    title: 'Morning Focus Block',
+    desc: `Sip steadily every <strong>25–30 minutes</strong> to maintain cerebral blood volume and prevent brain fog. Drink 16 oz ~30 min before your first deep work session.`,
+    amount: fmtMl(morningAmt),
+    pill: ''
+  });
+
+  // Midday / workout
+  const workoutNote = workoutDur > 0
+    ? ` Include <strong>${Math.round(workoutAdd)} ml during/after workout</strong>.`
+    : '';
+  timelineItems.push({
+    dot: '⚡', color: '#4ade80', dotBg: '#001a0f',
+    time: `12:00 PM — 4:00 PM`,
+    title: 'Midday & Post-Workout Recovery',
+    desc: `Peak sweat loss window.${workoutNote} Prioritize rehydration within 30 min post-exercise. Attack the afternoon slump with water before reaching for caffeine.`,
+    amount: fmtMl(middayAmt),
+    pill: needsElectrolytes ? '+ electrolytes recommended' : ''
+  });
+
+  // Afternoon slump
+  if (slump !== 'no') {
+    const slumpHour = slump === 'yes_2' ? 14 : 16;
+    timelineItems.push({
+      dot: '😮‍💨', color: '#c084fc', dotBg: '#1a0030',
+      time: `${fmtTime(slumpHour)}`,
+      title: 'Slump-Busting Hydration',
+      desc: `Before reaching for more coffee, drink <strong>300–400 ml</strong> of water. A 1–2% drop in hydration is enough to cause fatigue and reduce concentration.`,
+      amount: fmtMl(afternoonAmt),
+      pill: 'avoid caffeine after 2 PM'
+    });
+  }
+
+  // Evening wind-down
+  timelineItems.push({
+    dot: '🌙', color: '#818cf8', dotBg: '#0d0f30',
+    time: `5:00 PM — ${fmtTime(bedHour - 1)}`,
+    title: 'Evening Wind-Down',
+    desc: `Taper off fluid intake to prevent sleep disruption. Stop large volumes <strong>90 min before bed</strong>. Small sips are fine if thirsty.`,
+    amount: fmtMl(eveningAmt),
+    pill: 'stop large intake 90 min before bed'
+  });
+
+  /* ── Tips ─────────────────────────────────── */
+  const tips = [
+    {
+      icon: '☕',
+      text: caffeine >= 3
+        ? `<strong>High Caffeine Alert:</strong> You drink ${caffeine} cups/day — each cup displaces ~35 ml of net hydration. Add +${caffeine * 35} ml to counteract the diuretic effect.`
+        : `<strong>Caffeine Balance:</strong> Your ${caffeine} cup(s)/day is within a healthy range. Drink 250 ml water with each caffeinated drink to stay ahead.`
+    },
+    {
+      icon: '🧠',
+      text: `<strong>Cognitive Peak Hack:</strong> Drink 16–20 oz of water 20 minutes before every deep focus block. Dehydration as low as 1% can reduce cognitive performance by 5–10%.`
+    },
+    {
+      icon: climate === 'ac' ? '❄️' : '🌡️',
+      text: climate === 'ac'
+        ? `<strong>Air-Conditioned Office:</strong> AC removes humidity and accelerates insensible fluid loss. Add +200 ml to your target on heavy AC days.`
+        : climate === 'tropical' || climate === 'dry'
+          ? `<strong>Hot Climate Bonus:</strong> Your environment adds significant sweat load — we've already added a 20–25% climate bonus to your target.`
+          : `<strong>Temperature Awareness:</strong> On unexpectedly warm days, add 200–400 ml per hour of outdoor activity.`
+    },
+    {
+      icon: diet === 'keto' ? '🥩' : '🥗',
+      text: diet === 'keto'
+        ? `<strong>Keto / Low-Carb Alert:</strong> Glycogen depletion causes sodium and water flushing. You need +400 ml/day and regular electrolyte supplementation.`
+        : `<strong>Food Hydration Bonus:</strong> A balanced diet provides 20–30% of daily fluid needs through whole foods (fruits, veg, soups). This is already factored in.`
+    }
+  ];
+
+  if (needsElectrolytes) {
+    tips.push({
+      icon: '⚡',
+      text: `<strong>Electrolyte Recommendation:</strong> Your workout duration and/or climate warrants electrolyte replenishment. Aim for sodium (300–600 mg), potassium (150–300 mg), and magnesium post-workout.`
+    });
+  }
+
+  /* ── Phase distribution bars ─────────────── */
+  const phases = [
+    { label: 'Morning Wake', ml: wakeAmt, pct: Math.round(wakeAmt/totalMl*100), color: '#fbbf24' },
+    { label: 'Focus Block', ml: morningAmt, pct: Math.round(morningAmt/totalMl*100), color: '#38bdf8' },
+    { label: 'Midday/Workout', ml: middayAmt, pct: Math.round(middayAmt/totalMl*100), color: '#4ade80' },
+    { label: 'Afternoon', ml: afternoonAmt, pct: Math.round(afternoonAmt/totalMl*100), color: '#c084fc' },
+    { label: 'Evening', ml: eveningAmt, pct: Math.round(eveningAmt/totalMl*100), color: '#818cf8' },
+  ];
+
+  const barsHtml = phases.map(p => `
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:0.8rem;color:#a0c4e0">${p.label}</span>
+        <span style="font-size:0.8rem;font-weight:700;color:${p.color}">${p.ml} ml &nbsp;·&nbsp; ${p.pct}%</span>
+      </div>
+      <div class="progress-bg"><div class="progress-fill" style="width:0%;background:${p.color}" data-width="${p.pct}%"></div></div>
+    </div>
+  `).join('');
+
+  const tlHtml = timelineItems.map(t => `
+    <li class="tl-item">
+      <div class="tl-dot tl-line" style="background:${t.dotBg};border:1.5px solid ${t.color}">${t.dot}</div>
+      <div class="tl-content">
+        <div class="tl-time">${t.time}</div>
+        <div class="tl-title">${t.title}</div>
+        <div class="tl-desc">${t.desc}</div>
+        <span class="tl-amount">${t.amount}</span>
+        ${t.pill ? `<span class="tl-pill">${t.pill}</span>` : ''}
+      </div>
+    </li>
+  `).join('');
+
+  const tipsHtml = tips.map(t => `
+    <li class="tip-item">
+      <span class="tip-icon">${t.icon}</span>
+      <span class="tip-text">${t.text}</span>
+    </li>
+  `).join('');
+
+  const html = `
+    <!-- SUMMARY BANNER -->
+    <div class="summary-banner">
+      <div style="font-size:0.8rem;color:#4a7a9f;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Your Daily Target</div>
+      <div class="summary-volume">${totalL} L</div>
+      <div class="summary-unit">${totalOz} fl oz · ${totalMl} ml</div>
+      <div class="summary-tagline">Optimized for your body, activity level, and cognitive performance windows</div>
+    </div>
+
+    <!-- KEY METRICS -->
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-val">${totalL}L</div>
+        <div class="metric-label">Daily Total</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val green">${score}</div>
+        <div class="metric-label">Focus Score</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val amber">${Math.round(workoutAdd)} ml</div>
+        <div class="metric-label">Exercise Add-on</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:#c084fc">${Math.round(adjustments)} ml</div>
+        <div class="metric-label">Lifestyle Adj.</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:#fbbf24">${caffeine > 0 ? caffeine + '×' : 'None'}</div>
+        <div class="metric-label">Caffeine Cups</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:${needsElectrolytes ? '#4ade80' : '#4a7a9f'}">${needsElectrolytes ? 'Yes' : 'No'}</div>
+        <div class="metric-label">Electrolytes</div>
+      </div>
+    </div>
+
+    <!-- PHASE DISTRIBUTION -->
+    <div class="card">
+      <div class="card-title"><div class="icon">📊</div> Daily Volume Distribution</div>
+      ${barsHtml}
+    </div>
+
+    <!-- TIMELINE SCHEDULE -->
+    <div class="card">
+      <div class="card-title"><div class="icon">🕐</div> Phase-by-Phase Schedule</div>
+      <ul class="timeline">${tlHtml}</ul>
+      ${needsElectrolytes ? `<div class="electrolyte-badge">⚡ <span>Electrolyte supplementation recommended post-workout and on heavy sweat days. Look for sodium, potassium &amp; magnesium blends.</span></div>` : ''}
+    </div>
+
+    <!-- FOCUS & PERFORMANCE TIPS -->
+    <div class="card">
+      <div class="card-title"><div class="icon">💡</div> Focus & Performance Tips</div>
+      <ul class="tip-list">${tipsHtml}</ul>
+    </div>
+
+    <!-- DISCLAIMER -->
+    <div class="disclaimer">
+      <strong>⚠️ Health Notice:</strong> This hydration plan is for informational and wellness optimization purposes only and does not constitute medical advice. Individuals with kidney conditions, cardiovascular disease, heart failure, or specific medical fluid restrictions should consult a healthcare provider before following this plan. If you selected a fluid restriction flag, please prioritize your physician's guidance over these recommendations.
+    </div>
+
+    <div style="text-align:center;margin-top:24px">
+      <button class="reset-btn" onclick="resetPlan()">↺ Start Over</button>
+    </div>
+  `;
+
+  document.getElementById('resultsContainer').innerHTML = html;
+  goTo(5);
+
+  /* Animate progress bars after render */
+  setTimeout(() => {
+    document.querySelectorAll('.progress-fill').forEach(bar => {
+      bar.style.width = bar.dataset.width;
+    });
+  }, 200);
+}
+
+function resetPlan() {
+  // reset all chip selections to defaults
+  document.querySelectorAll('.chip-group').forEach(group => {
+    group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  });
+  document.getElementById('workoutChips').querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  document.querySelector('#intensityChips [data-val="moderate"]').classList.add('selected');
+  document.querySelector('#climateChips [data-val="temperate"]').classList.add('selected');
+  document.querySelector('#slumpChips [data-val="yes_2"]').classList.add('selected');
+  document.querySelector('#focusChips [data-val="early_morning"]').classList.add('selected');
+  document.querySelector('#focusChips [data-val="mid_morning"]').classList.add('selected');
+  document.querySelector('#alcoholChips [data-val="none"]').classList.add('selected');
+  document.querySelector('#dietChips [data-val="balanced"]').classList.add('selected');
+
+  // reset sliders
+  ['weight','height','age','workoutDur','workoutDays','caffeine'].forEach(id => {
+    const el = document.getElementById(id);
+    const defaults = {weight:75,height:170,age:30,workoutDur:45,workoutDays:4,caffeine:2};
+    el.value = defaults[id];
+  });
+  sync('weight','weightVal'); sync('height','heightVal'); sync('age','ageVal');
+  sync('workoutDur','workoutDurVal'); sync('workoutDays','workoutDaysVal');
+  sync('caffeine','caffeineVal');
+
+  goTo(1);
+}
+</script>
+</body>
+</html>
